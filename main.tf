@@ -21,10 +21,7 @@ resource "google_cloud_run_service" "cloud_run" {
           container_port = 8080  # ✅ Ensure this is set!
         }
 
-        env {
-          name  = "PORT"
-          value = "8080"
-        }
+        
       }
     }
   }
