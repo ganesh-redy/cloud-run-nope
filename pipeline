@@ -5,7 +5,7 @@ pipeline {
         PROJECT_ID = "mythic-inn-420620"
         IMAGE_NAME = "docker-cloud"
         IMAGE_TAG = "latest"
-        ARTIFACT_REPO = "us-central1-docker.pkg.dev/mythic-inn-420620/my-docker-repo1/${IMAGE_NAME}"
+        ARTIFACT_REPO = "us-central1-docker.pkg.dev/mythic-inn-420620/my-docker-repo1"
         GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-key2')
     }
 
@@ -34,27 +34,29 @@ pipeline {
         }
 
         stage("Authenticate with Docker Hub") {
-          
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "docker-hub-credential",
                     usernameVariable: "DOCKER_USER",
                     passwordVariable: "DOCKER_PASS"
                 )]) {
-                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+                    script {
+                        sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin || exit 1
+                        '''
+                    }
                 }
             }
         }
 
         stage("Push Docker Image to Docker Hub") {
-          
             steps {
-                
+                script {
                     sh '''
-                    docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_USER}/${IMAGE_NAME}:${BUILD_NUMBER}
-                    docker push ${DOCKER_USER}/${IMAGE_NAME}:${BUILD_NUMBER}
+                    docker tag ${IMAGE_NAME}:${BUILD_NUMBER} $DOCKER_USER/${IMAGE_NAME}:${BUILD_NUMBER}
+                    docker push $DOCKER_USER/${IMAGE_NAME}:${BUILD_NUMBER}
                     '''
-                
+                }
             }
         }
 
@@ -64,8 +66,8 @@ pipeline {
                     retry(3) {  
                         sh '''
                         echo "Tagging and pushing image to Artifact Registry..."
-                        docker tag ${IMAGE_NAME}:${BUILD_NUMBER} $ARTIFACT_REPO:${BUILD_NUMBER}
-                        docker push $ARTIFACT_REPO:${BUILD_NUMBER}
+                        docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${ARTIFACT_REPO}/${IMAGE_NAME}:${BUILD_NUMBER}
+                        docker push ${ARTIFACT_REPO}/${IMAGE_NAME}:${BUILD_NUMBER}
                         '''
                     }
                 }
