@@ -1,18 +1,29 @@
-pipeline{
+pipeline {
     agent any
     environment {
-         REGION_GCP = "us-central1"
+        REGION_GCP = "us-central1"
         PROJECT_ID = "mythic-inn-420620"
         IMAGE_NAME = "docker-cloud"
         IMAGE_TAG = "latest"
         ARTIFACT_REPO = "us-central1-docker.pkg.dev/mythic-inn-420620/my-docker-repo1/${IMAGE_NAME}"
         GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-key2')
-        
     }
+
     stages {
         stage("Git Clone") {
             steps {
                 git branch: 'main', url: 'https://github.com/ganesh-redy/cloud-run-nope.git'
+            }
+        }
+
+        stage("Authenticate with GCP") {
+            steps {
+                script {
+                    sh '''
+                    gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+                    gcloud auth configure-docker us-central1-docker.pkg.dev
+                    '''
+                }
             }
         }
 
@@ -21,7 +32,11 @@ pipeline{
                 sh 'docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} .'
             }
         }
-         stage("Authenticate with Docker Hub") {
+
+        stage("Authenticate with Docker Hub") {
+            when {
+                expression { return env.PUSH_TO_DOCKER_HUB == "true" }
+            }
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "docker-hub-credential",
@@ -34,53 +49,44 @@ pipeline{
         }
 
         stage("Push Docker Image to Docker Hub") {
+          
             steps {
-                sh '''
-                docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_HUB}:${BUILD_NUMBER}
-                docker push ${DOCKER_HUB}:${BUILD_NUMBER}
-                '''
+                
+                    sh '''
+                    docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_USER}/${IMAGE_NAME}:${BUILD_NUMBER}
+                    docker push ${DOCKER_USER}/${IMAGE_NAME}:${BUILD_NUMBER}
+                    '''
+                
             }
         }
 
-        
-        
-        stage("Wait & Push Docker Image to Artifact Registry") {
-                    steps {
-                        script {
-                            retry(3) {  
-                                sh '''
-            
+        stage("Push Docker Image to Artifact Registry") {
+            steps {
+                script {
+                    retry(3) {  
+                        sh '''
+                        echo "Tagging and pushing image to Artifact Registry..."
+                        docker tag ${IMAGE_NAME}:${BUILD_NUMBER} $ARTIFACT_REPO:${BUILD_NUMBER}
+                        docker push $ARTIFACT_REPO:${BUILD_NUMBER}
+                        '''
+                    }
+                }
+            }
+        }
 
-                                echo "Waiting for Artifact Registry to be available..."
-                                sleep 50
-                                docker tag ${IMAGE_NAME}:${BUILD_NUMBER} $ARTIFACT_REPO:${BUILD_NUMBER}
-                                docker push $ARTIFACT_REPO:${BUILD_NUMBER}
-                                '''
-                            }
-                        }
-                    }
+        stage("Deploy with Terraform") {
+            steps {
+                script {
+                    sh '''
+                    cd terraform
+                    terraform init
+                    terraform plan
+                    terraform apply --auto-approve
+                    '''
                 }
-        
-stage("Run Terraform & Push Docker Image in Parallel") {
-           
-                stage("Create Artifact Registry with Terraform") {
-                    steps {
-                        script {
-                            sh '''
-                            terraform init
-                            terraform plan
-                            terraform apply --auto-approve
-                            '''
-                        }
-                    }
-                }
-                
-                
-            
+            }
         }
     }
-        
-    
 
     post {
         success {
