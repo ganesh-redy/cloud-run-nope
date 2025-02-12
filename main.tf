@@ -25,7 +25,7 @@ resource "google_cloud_run_service" "cloud_run" {
     latest_revision = true
   }
 
-  depends_on = [google_artifact_registry_repository.repo]
+ 
 }
 
 # ✅ Allow Public Access to Cloud Run
