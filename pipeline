@@ -1,0 +1,93 @@
+pipeline{
+    agent any
+    environment {
+         REGION_GCP = "us-central1"
+        PROJECT_ID = "mythic-inn-420620"
+        IMAGE_NAME = "docker-cloud"
+        IMAGE_TAG = "latest"
+        ARTIFACT_REPO = "us-central1-docker.pkg.dev/mythic-inn-420620/my-docker-repo1/${IMAGE_NAME}"
+        GOOGLE_APPLICATION_CREDENTIALS = credentials('gcp-key2')
+        
+    }
+    stages {
+        stage("Git Clone") {
+            steps {
+                git branch: 'main', url: 'https://github.com/ganesh-redy/cloud-run-nope.git'
+            }
+        }
+
+        stage("Build Docker Image") {
+            steps {
+                sh 'docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} .'
+            }
+        }
+         stage("Authenticate with Docker Hub") {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: "docker-hub-credential",
+                    usernameVariable: "DOCKER_USER",
+                    passwordVariable: "DOCKER_PASS"
+                )]) {
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+                }
+            }
+        }
+
+        stage("Push Docker Image to Docker Hub") {
+            steps {
+                sh '''
+                docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_HUB}:${BUILD_NUMBER}
+                docker push ${DOCKER_HUB}:${BUILD_NUMBER}
+                '''
+            }
+        }
+
+        
+        
+        stage("Wait & Push Docker Image to Artifact Registry") {
+                    steps {
+                        script {
+                            retry(3) {  
+                                sh '''
+            
+
+                                echo "Waiting for Artifact Registry to be available..."
+                                sleep 50
+                                docker tag ${IMAGE_NAME}:${BUILD_NUMBER} $ARTIFACT_REPO:${BUILD_NUMBER}
+                                docker push $ARTIFACT_REPO:${BUILD_NUMBER}
+                                '''
+                            }
+                        }
+                    }
+                }
+        
+stage("Run Terraform & Push Docker Image in Parallel") {
+           
+                stage("Create Artifact Registry with Terraform") {
+                    steps {
+                        script {
+                            sh '''
+                            terraform init
+                            terraform plan
+                            terraform apply --auto-approve
+                            '''
+                        }
+                    }
+                }
+                
+                
+            
+        }
+    }
+        
+    
+
+    post {
+        success {
+            echo "Pipeline completed successfully! 🚀"
+        }
+        failure {
+            echo "Pipeline failed! ❌"
+        }
+    }
+}
