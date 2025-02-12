@@ -7,6 +7,7 @@ provider "google" {
 
 
 # ✅ Cloud Run Service that deploys the Docker container
+
 resource "google_cloud_run_service" "cloud_run" {
   name     = var.image_name
   location = var.region
@@ -16,6 +17,14 @@ resource "google_cloud_run_service" "cloud_run" {
       containers {
         image = "${var.region}-docker.pkg.dev/${var.project_id}/my-docker-repo1/${var.image_name}:${var.image_tag}"
         
+        ports {
+          container_port = 8080  # ✅ Ensure this is set!
+        }
+
+        env {
+          name  = "PORT"
+          value = "8080"
+        }
       }
     }
   }
@@ -24,9 +33,8 @@ resource "google_cloud_run_service" "cloud_run" {
     percent         = 100
     latest_revision = true
   }
-
- 
 }
+
 
 # ✅ Allow Public Access to Cloud Run
 resource "google_cloud_run_service_iam_member" "all_users" {
