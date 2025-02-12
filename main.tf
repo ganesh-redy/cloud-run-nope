@@ -14,7 +14,7 @@ resource "google_cloud_run_service" "cloud_run" {
   template {
     spec {
       containers {
-        image = "${var.region}-docker.pkg.dev/${var.project_id}/my-docker-repo1/${var.image_name}:${var.build_number}"
+        image = "${var.region}-docker.pkg.dev/${var.project_id}/my-docker-repo1/${var.image_name}:${var.image_tag}"
         
       }
     }
@@ -53,7 +53,7 @@ variable "image_name" {
   default = "docker-cloud"
 }
 
-
+variable "image_tag" {}
 
 variable "build_number" {
   default = "latest"
