@@ -34,9 +34,7 @@ pipeline {
         }
 
         stage("Authenticate with Docker Hub") {
-            when {
-                expression { return env.PUSH_TO_DOCKER_HUB == "true" }
-            }
+          
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: "docker-hub-credential",
