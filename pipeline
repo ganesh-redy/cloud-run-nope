@@ -80,8 +80,8 @@ pipeline {
                     sh '''
                  
                     terraform init
-                    terraform plan
-                   terraform apply -var="image_tag=${BUILD_NUMBER}" --auto-approve
+                    terraform plan -var="image_tag=${BUILD_NUMBER}"
+                    terraform apply -var="image_tag=${BUILD_NUMBER}" --auto-approve
                     '''
                 }
             }
