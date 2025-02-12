@@ -53,7 +53,12 @@ variable "image_name" {
   default = "docker-cloud"
 }
 
-variable "image_tag" {}
+variable "image_tag" {
+  description = "Tag of the Docker image to deploy"
+  type        = string
+  default     = "latest"  # Optional default value
+}
+
 
 variable "build_number" {
   default = "latest"
