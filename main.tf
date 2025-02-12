@@ -4,11 +4,7 @@ provider "google" {
 }
 
 
-resource "google_project_iam_member" "artifact_registry_writer" {
-  project = var.project_id
-  role    = "roles/artifactregistry.writer"
-  member  = "serviceAccount:ganeshreddy7610@gmail.com"  # Ensure correct service account
-}
+
 
 # ✅ Cloud Run Service that deploys the Docker container
 resource "google_cloud_run_service" "cloud_run" {
